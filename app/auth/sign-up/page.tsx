@@ -3,9 +3,8 @@
 import React from "react"
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
+import { signUp } from '@/lib/actions/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -21,35 +20,28 @@ export default function SignUpPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const router = useRouter()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    const supabase = createClient()
-    
-    const { error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
-          `${window.location.origin}/auth/callback`,
-        data: {
-          full_name: fullName,
-          role: role,
-        },
-      },
-    })
+    const formData = new FormData()
+    formData.append('email', email)
+    formData.append('password', password)
+    formData.append('full_name', fullName)
+    formData.append('role', role)
 
-    if (signUpError) {
-      setError(signUpError.message)
+    try {
+      const result = await signUp(formData)
+      if (result?.error) {
+        setError(result.error)
+        setLoading(false)
+      }
+    } catch (err: any) {
+      setError(err?.message || 'An error occurred during sign up')
       setLoading(false)
-      return
     }
-
-    router.push('/auth/sign-up-success')
   }
 
   return (

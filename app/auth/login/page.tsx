@@ -3,9 +3,8 @@
 import React from "react"
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
+import { signIn } from '@/lib/actions/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -18,42 +17,25 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const router = useRouter()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    const supabase = createClient()
-    
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    const formData = new FormData()
+    formData.append('email', email)
+    formData.append('password', password)
 
-    if (signInError) {
-      setError(signInError.message)
+    try {
+      const result = await signIn(formData)
+      if (result?.error) {
+        setError(result.error)
+        setLoading(false)
+      }
+    } catch (err: any) {
+      setError(err?.message || 'An error occurred during sign in')
       setLoading(false)
-      return
-    }
-
-    // Get user profile to determine role
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
-
-      const role = profile?.role || 'student'
-      router.push(`/dashboard/${role}`)
-      router.refresh()
-    } else {
-      router.push('/dashboard')
-      router.refresh()
     }
   }
 
